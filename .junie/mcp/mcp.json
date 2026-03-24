@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/Users/alperalt/Library/Application Support/Herd/bin/php84",
+            "args": [
+                "/Users/alperalt/Herd/laravel-cedula/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
