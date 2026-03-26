@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Consultar;
+use App\Http\Controllers\MailTestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 

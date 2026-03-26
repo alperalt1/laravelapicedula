@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Mail\RecuperarPasswordMail;
+use App\Mail\WelcomeMail;
 use App\Models\Plan;
 use App\Models\User;
 use App\Traits\ApiResponses;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
@@ -22,21 +26,31 @@ class AuthController extends Controller
             'password' => ['required', 'confirmed']
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password)
-        ]);
+        $user = DB::transaction(function () use ($request) {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password)
+            ]);
 
-        $planBasico = Plan::where('name', 'Plan Básico')->first();
+            $planBasico = Plan::where('name', 'Plan Básico')->first();
 
-        $user->suscripcion()->create([
-            'plan_id' => $planBasico->id,
-            'consultas_disponibles' => $planBasico->limit_consultas,
-            'fecha_inicio' => now(),
-            'fecha_vencimiento' => now()->addDays($planBasico->duration_days),
-            'is_active' => true
-        ]);
+            $user->suscripcion()->create([
+                'plan_id' => $planBasico->id,
+                'consultas_disponibles' => $planBasico->limit_consultas,
+                'fecha_inicio' => now(),
+                'fecha_vencimiento' => now()->addDays($planBasico->duration_days),
+                'is_active' => true
+            ]);
+
+            return $user;
+        });
+
+        try {
+            Mail::to($user->email)->queue(new WelcomeMail($user));
+        } catch (Exception $e) {
+            Log::error("Error enviando correo a {$user->email}: " . $e->getMessage());
+        }
 
 
         $token = $user->createToken('auth-token')->plainTextToken;
