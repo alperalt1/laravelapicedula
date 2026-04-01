@@ -28,7 +28,7 @@ class RecuperarPasswordMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Recuperar Password Mail',
+            subject: 'Recuperar Contraseña',
         );
     }
 

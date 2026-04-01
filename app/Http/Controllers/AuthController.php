@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Traits\ApiResponses;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -91,19 +92,52 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if ($user) {
+
             $codigo = rand(100000, 999999);
-            Mail::to($user->email)->send(new RecuperarPasswordMail($codigo));
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $user->email], 
+                [
+                    'token' => $codigo,
+                    'created_at' => now()
+                ]
+            );
+            try {
+                Mail::to($user->email)->queue(new RecuperarPasswordMail($codigo));
+            } catch (Exception $e) {
+                Log::error("Error enviando correo a {$user->email}: " . $e->getMessage());
+            }
         }
 
-        return response()->json([
+        return $this->successResponse([
             'message' => 'Si el correo existe, el código ha sido enviado.'
-        ]);
+        ], 'Correo Enviado Exitosamente', 200);
     }
 
-    // public function recuperarcontrasena(Request $request)
-    // {
-    //     $credenciales = $request->validate([
-    //         'email'
-    //     ])
-    // }
+    public function recuperarcontrasena(Request $request)
+    {
+
+        $request->validate([
+            'email' => ['required', 'email', 'exists:users,email'],
+            'codigo' => ['required', 'string', 'max:6'],
+            'password' => ['required', 'string', 'min:8', 'confirmed']
+        ]);
+
+        $validar = DB::table('password_reset_tokens')->where('email', $request->email)->first();
+        if (!$validar || $validar->token !== $request->codigo) {
+            return $this->errorResponse('Código Inválido', 401);
+        }
+
+        $expiracion = Carbon::parse($validar->created_at)->addMinutes(15);
+        if ($expiracion->isPast()) {
+            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return $this->errorResponse('El código ha expirado', 401);
+        }
+
+        $update = User::where('email', $request->email)->first();
+        $update['password'] = Hash::make($request->password);
+        $update->save();
+
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+        return $this->successResponse(null, 'Contraseña actualizada correctamente');
+    }
 }
