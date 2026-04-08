@@ -34,7 +34,7 @@ class AuthController extends Controller
                 'password' => Hash::make($request->password)
             ]);
 
-            $planBasico = Plan::where('name', 'Plan Básico')->first();
+            $planBasico = Plan::where('name', 'Básico')->first();
 
             $user->suscripcion()->create([
                 'plan_id' => $planBasico->id,

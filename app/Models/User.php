@@ -40,4 +40,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(HistorialConsulta::class);
     }
+
+    public function compras()
+    {
+        return $this->hasMany(CompraPlan::class);
+    }
 }

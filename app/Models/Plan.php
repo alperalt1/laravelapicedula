@@ -16,12 +16,16 @@ class Plan extends Model
     ];
 
     protected $casts = [
-        'information'=>'array',
-        'price'=>'decimal:2'
+        'information' => 'array',
+        'price' => 'decimal:2'
     ];
 
     public function suscripciones(): HasMany
     {
         return $this->hasMany(Suscripcion::class);
+    }
+    public function compras(): HasMany
+    {
+        return $this->hasMany(CompraPlan::class);
     }
 }
