@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HistorialConsulta;
+use App\Models\Plan;
 use App\Models\Suscripcion;
 use App\Traits\ApiResponses;
 use Exception;
@@ -85,5 +86,13 @@ class Consultar extends Controller
         }
         return $this->successResponse($historial, 'Historial de consultas recuperado', 200);
     }
+
+    public function planes()
+    {
+        $planes = Plan::select('id', 'name', 'price', 'limit_consultas')->get();
+        return $this->successResponse($planes, 'Planes recuperados exitosamente',200);
+    }
+    
+
 }
 

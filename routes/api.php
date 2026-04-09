@@ -27,4 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/historialconsulta',[Consultar::class, 'historialconsulta']);
     Route::get('/exportar',[ExcelController::class, 'exportar']);
     Route::post('/generarorden',[Pago::class, 'generarorden']);
+    Route::get('/planes',[Consultar::class, 'planes']);
+    Route::get('/pago/validartransaccion/{transactionId}', [Pago::class, 'validartransaccion']);
+    Route::get('/pago/historialpago', [Pago::class, 'historialpago']);
 });

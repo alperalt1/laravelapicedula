@@ -102,12 +102,68 @@ class Pago extends Controller
         if ($request->transactionStatus == 3) {
             $compra->update(['estado' => 'completado']);
             $user = $compra->user;
-            $suscripcion = $user->suscripcion; 
+            $suscripcion = $user->suscripcion;
             $suscripcion->increment('consultas_disponibles', $compra->consultas_adquiridas);
 
             return response()->json(['message' => 'Pago procesado y consultas acreditadas'], 200);
         }
 
         return response()->json(['message' => 'Pago no aprobado'], 400);
+    }
+
+    public function validartransaccion($transactionId)
+    {
+        $compra = CompraPlan::where('referencia_pago', $transactionId)
+            ->where('estado', 'pendiente')
+            ->first();
+
+        if (!$compra) {
+            return response()->json(['message' => 'Compra no encontrada o ya procesada'], 404);
+        }
+        try {
+            $response = Http::withToken(env('PAYPHONE_TOKEN'))
+                ->get("https://pay.payphonetodoesposible.com/api/Sale/client/{$transactionId}");
+
+            if ($response->successful()) {
+                $dataArray = $response->json();
+                if (!empty($dataArray) && is_array($dataArray)) {
+                    $data = $dataArray[0];
+                    if ($data['statusCode'] == 3) {
+                        $compra->update(['estado' => 'completado']);
+                        $user = $compra->user;
+                        $suscripcion = $user->suscripcion;
+                        $suscripcion->update([
+                            'plan_id' => $compra->plan_id, 
+                            'consultas_disponibles' => $suscripcion->consultas_disponibles + $compra->consultas_adquiridas,
+                            'is_active' => true
+                        ]);
+                        return response()->json([
+                            'status' => 'success',
+                            'message' => '¡Pago verificado! Consultas acreditadas.',
+                            'consultas' => $suscripcion->load('plan')
+                        ], 200);
+                    }
+                }
+            }
+
+            return response()->json(['message' => 'El pago aún no aparece como aprobado en Payphone.'], 400);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error de conexión con la pasarela'], 500);
+        }
+    }
+
+    public function historialpago(Request $request)
+    {
+        $user = $request->user();
+        $pagos = CompraPlan::where('user_id', $user->id)
+            ->with(['plan:id,name'])
+            ->select('id', 'plan_id', 'monto', 'referencia_pago', 'estado', 'created_at')
+            ->latest()->get();
+
+        if ($pagos->isEmpty()) {
+            return $this->errorResponse('No se encontraron registros de pago', 404);
+        }
+
+        return $this->successResponse($pagos, 'Historial de pagos recuperado', 200);
     }
 }
